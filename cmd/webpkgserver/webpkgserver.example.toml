@@ -202,6 +202,84 @@
   # bytes for the OCSP response.
   #AllowTestCert = false
 
+# IMPORTANT NOTE: the support of the ACME protocol and automatic renewal of
+# certificates is currently in the EXPERIMENTAL stage.  Once we have more
+# experience with people using it out in the wild, we will gradually move it to
+# the PRODUCTION stage.
+#
+# ACME is a protocol that allows automatic renewal of certificates.
+# Web Packager HTTP server uses the ACME library from github.com/go-acme/lego
+# to handle certificate renewal. Automatic certificate renewal is enabled
+# in Web Packager HTTP server via `SXG.ACME.Enable`. Setting this field to true
+# will enable Web Packager to automatically request certificate renewals
+# whenever it has determined that the current certificate is expired or about to
+# expire.
+#
+# Note that a recommended best practice for setting up the cert renewal that
+# minimizes both cost and bombarding your Certificate Authority with requests is
+# that for a multi-instance setup of Web Packager, only one instance is setup to
+# do automatic cert renewals and the rest of the instances will just be
+# configured to reload the fresh certificate from disk when their in-memory
+# copies expire.  This also implies that the cert paths configured above in
+# 'PEMFile' will be located on a shared filesystem accessible by all Web
+# Packager HTTP server instances.
+#
+# For the full ACME spec, see:
+#   https://tools.ietf.org/html/rfc8555 
+[SXG.ACME]
+  # This field enables Web Packager to attempt to auto renew certificates using
+  # ACME. Required when ACME is enabled.
+  #Enable=false
+
+  # The ACME discovery URL. It is specified by the Certificate Authority that
+  # doles out your certificates. As of August 2020, only DigiCert supports
+  # automatic renewals of signed exchange certificate:
+  # https://docs.digicert.com/certificate-tools/acme-user-guide/acme-directory-urls-signed-http-exchange-certificates/
+  DiscoveryURL = '<Your Discovery URL>'
+
+  # The email address registered to the Certificate Authority for your signed
+  # exchange certificates.
+  Email = 'user@example.com'
+
+  # For the remaining configuration items, it's important to understand the
+  # different challenges employed as part of the ACME protocol:
+  # https://ietf-wg-acme.github.io/acme/draft-ietf-acme-acme.html#identifier-validation-challenges
+  # https://letsencrypt.org/docs/challenge-types/
+  # https://certbot.eff.org/docs/challenges.html
+  #
+  # Note that you don't need to have all the challenges configured, it's
+  # typically sufficient to have one configured. For wildcard certificates, only
+  # DNSProvider is a supported method of validation, the others cannot be used. 
+  # See below.
+
+  # This is the http server root directory where the ACME http challenge token
+  # be deposited. Note that you may need to do some configuration work to
+  # get this setup to work where multiple instances of Web Packager is running.
+  # For example:
+  # https://community.letsencrypt.org/t/how-to-nginx-configuration-to-enable-acme-challenge-support-on-all-http-virtual-hosts/5622/3
+  HTTPWebRootDir = '/path/to/www_root_dir'
+
+  # This is the port used by the Web Packager to respond to the HTTP challenge
+  # issued as part of ACME protocol. Note that if your setup only opens up
+  # certain ports, you may need to do a configuration change where you forward
+  # requests to this port using proxy_pass, for example:
+  # https://medium.com/@dipeshwagle/add-https-using-lets-encrypt-to-nginx-configured-as-a-reverse-proxy-on-ubuntu-b4455a729176
+  HTTPChallengePort = 5002
+
+  # This is the port used by Web Packager to respond to the TLS challenge issued
+  # as part of the ACME protocol.
+  TLSChallengePort = 5003
+
+  # This is the DnsProvider to be used in fulfilling the ACME DNS challenge.
+  # Note that you only need the DNS challenge setup if you have wildcard
+  # certificates: https://searchsecurity.techtarget.com/definition/wildcard-certificate
+  # For the DNS challenge, go-acme/lego, there are certain environment variables
+  # that need to be set up which depends on the DNS provider that you use to
+  # fulfill the DNS challenge: https://go-acme.github.io/lego/dns/
+  # To use this, build webpkgserver with `go build -tags dns01`; it is disabled
+  # by default because it bloats the binary.
+  #DNSProvider = '' 
+
 # Specify the range of URLs webpkgserver can fetch the contents from and
 # produce the signed exchanges of. You can specify as many [[Sign]] configs
 # as you want, but must specify at least one.
